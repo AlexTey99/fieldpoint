@@ -101,3 +101,8 @@ dialog h3 { margin: 0 0 4px; }
   .sidebar { border-right: 0; border-top: 1px solid var(--line); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.site-item:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: -2px;
+}

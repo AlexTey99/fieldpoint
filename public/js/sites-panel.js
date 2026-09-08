@@ -43,6 +43,9 @@ export function createSitesPanel({ mapView, currentUser }) {
     }
     for (const site of sites) {
       const item = document.createElement('li');
+      item.setAttribute('tabindex', '0')
+      item.setAttribute('role', 'button')
+      item.setAttribute('aria-selected', site.id === selectedId ? 'true' : 'false');
       item.className = `site-item${site.id === selectedId ? ' selected' : ''}`;
       item.dataset.id = site.id;
       const title = document.createElement('div');
@@ -70,6 +73,12 @@ export function createSitesPanel({ mapView, currentUser }) {
       sub.textContent = `${CATEGORIES[site.category]?.label ?? site.category} · ${site.address || `${site.lat.toFixed(4)}, ${site.lng.toFixed(4)}`}`;
       item.append(title, sub);
       item.addEventListener('click', () => select(site.id));
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          select(site.id);
+        }
+      });
       item.addEventListener('dblclick', () => openEditor(site));
       list.append(item);
     }

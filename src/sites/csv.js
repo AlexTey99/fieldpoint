@@ -1,4 +1,4 @@
-const HEADERS = ['id', 'name', 'address', 'lat', 'lng', 'category', 'status', 'notes', 'createdAt', 'updatedAt'];
+const HEADERS = ['id', 'name', 'address', 'lat', 'lng', 'category', 'status', 'notes', 'assignedToName', 'createdAt', 'updatedAt'];
 
 function escapeCell(value) {
   const text = value === null || value === undefined ? '' : String(value);

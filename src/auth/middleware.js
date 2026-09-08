@@ -1,12 +1,21 @@
 import { SESSION_COOKIE, parseCookies } from './session.js';
 import { HttpError } from '../middleware/errors.js';
 
-/** Attaches req.user (or null) from the session cookie. Never rejects. */
+/**
+ * Attaches req.user (or null) from the session cookie. Never rejects: a session
+ * store failure is treated as "not signed in" (fail closed) and logged, so one
+ * bad lookup cannot turn every route into a 500.
+ */
 export function attachUser(sessions) {
   return (req, _res, next) => {
     const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
     req.sessionToken = token ?? null;
-    req.user = token ? sessions.resolve(token) : null;
+    try {
+      req.user = token ? sessions.resolve(token) : null;
+    } catch (error) {
+      console.error('[auth] session lookup failed; treating request as anonymous', error);
+      req.user = null;
+    }
     next();
   };
 }

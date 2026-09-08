@@ -1,11 +1,4 @@
-export const SCHEMA_VERSION = 1;
-
-export const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS schema_meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-
+const SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
@@ -54,3 +47,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
 `;
+
+export const migration001Baseline = {
+  version: 1,
+  name: 'baseline',
+  up(db) {
+    db.exec(SQL);
+  },
+};

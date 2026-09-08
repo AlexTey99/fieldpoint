@@ -101,3 +101,42 @@ dialog h3 { margin: 0 0 4px; }
   .sidebar { border-right: 0; border-top: 1px solid var(--line); }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Stats strip */
+.stats-strip { display: flex; gap: 6px; flex-wrap: wrap; }
+.stat-chip {
+  padding: 3px 10px; font-size: 12px; border-radius: 999px; background: var(--surface-2);
+  border: 1px solid var(--line); color: var(--muted);
+}
+.stat-chip.active { color: var(--green); border-color: var(--green-dim); }
+.stat-chip.planned { color: var(--blue); }
+
+.toolbar { grid-template-columns: 1fr 1fr; }
+.toolbar #site-sort, .toolbar #near-me { grid-column: auto; }
+.check-row { font-size: 12px; color: var(--muted); }
+.check { flex-direction: row; align-items: center; gap: 6px; flex: 0 0 auto; }
+.check input { width: auto; }
+#near-me.active { border-color: var(--blue); color: var(--blue); }
+
+.site-item:focus-visible, .wo-item:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.site-item .meta { font-size: 11px; opacity: 0.85; }
+.site-item.deleted { opacity: 0.6; border-style: dashed; }
+
+/* Work orders */
+.wo-item { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; cursor: pointer; display: grid; gap: 3px; }
+.wo-item:hover { border-color: var(--green); background: var(--surface-2); }
+.wo-item.overdue { border-left: 3px solid var(--red); }
+.wo-item .title { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; }
+.badge.priority-urgent { color: var(--red); border-color: var(--red); }
+.badge.priority-high { color: var(--amber); border-color: var(--amber); }
+.badge.priority-normal { color: var(--muted); }
+.badge.priority-low { color: var(--muted); opacity: 0.7; }
+.link-btn {
+  background: none; border: 0; padding: 0; color: var(--blue); font-size: 12px; text-align: left;
+  text-decoration: underline; cursor: pointer;
+}
+.link-btn:hover { border: 0; }
+
+.comments { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; max-height: 200px; overflow-y: auto; font-size: 13px; }
+.comments li { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+#wo-comment-section h4 { margin: 12px 0 4px; }

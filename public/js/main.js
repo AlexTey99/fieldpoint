@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { createMapView } from './map.js';
 import { createSitesPanel } from './sites-panel.js';
+import { createWorkOrdersPanel } from './work-orders-panel.js';
 import { createAdminPanel } from './admin.js';
 import { $, debounce, formValues, toast } from './ui.js';
 
@@ -29,7 +30,25 @@ async function showApp(user) {
     onAddAt: (lat, lng) => sitesPanel.openEditor(null, { lat: lat.toFixed(6), lng: lng.toFixed(6) }),
   });
   sitesPanel = createSitesPanel({ mapView, currentUser: user });
+  const workOrdersPanel = createWorkOrdersPanel({
+    currentUser: user,
+    getSites: () => sitesPanel.getSites(),
+    onFocusSite: (siteId) => {
+      showTab('sites');
+      sitesPanel.select(siteId);
+    },
+  });
   const adminPanel = user.role === 'admin' ? createAdminPanel({ currentUser: user }) : null;
+
+  function showTab(name) {
+    for (const tab of document.querySelectorAll('.tab')) {
+      tab.classList.toggle('active', tab.dataset.tab === name);
+      tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+    }
+    $('#panel-sites').hidden = name !== 'sites';
+    $('#panel-work-orders').hidden = name !== 'work-orders';
+    $('#panel-admin').hidden = name !== 'admin';
+  }
 
   const refreshSites = debounce(() => sitesPanel.refresh(), SEARCH_DEBOUNCE_MS);
   $('#search').addEventListener('input', refreshSites);
@@ -38,9 +57,8 @@ async function showApp(user) {
 
   for (const tab of document.querySelectorAll('.tab')) {
     tab.addEventListener('click', async () => {
-      document.querySelectorAll('.tab').forEach((element) => element.classList.toggle('active', element === tab));
-      $('#panel-sites').hidden = tab.dataset.tab !== 'sites';
-      $('#panel-admin').hidden = tab.dataset.tab !== 'admin';
+      showTab(tab.dataset.tab);
+      if (tab.dataset.tab === 'work-orders') await workOrdersPanel.refresh();
       if (tab.dataset.tab === 'admin' && adminPanel) await adminPanel.refresh();
     });
   }

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { requireRole } from '../auth/middleware.js';
+import { requireAuth, requireRole } from '../auth/middleware.js';
 import { validate } from '../middleware/validate.js';
 import { HttpError } from '../middleware/errors.js';
 import { recordAudit, listAudit } from '../audit/log.js';
@@ -13,6 +13,13 @@ const auditQuery = z.object({ limit: z.coerce.number().int().min(1).max(500).def
 
 export function createUserRouter({ db, users, sessions }) {
   const router = Router();
+
+  // Any signed-in user needs colleague names to assign work; this exposes far
+  // less than the admin listing and hides deactivated accounts.
+  router.get('/directory', requireAuth, (_req, res) => {
+    res.json({ ok: true, users: users.directory() });
+  });
+
   router.use(requireRole('admin'));
 
   router.get('/', (_req, res) => {

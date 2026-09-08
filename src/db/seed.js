@@ -1,6 +1,14 @@
 import { createUserRepository } from '../users/repository.js';
 import { createSiteRepository } from '../sites/repository.js';
+import { createWorkOrderRepository } from '../work-orders/repository.js';
 import { hashPassword } from '../auth/password.js';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Due date `days` from today, as YYYY-MM-DD. Negative values are overdue. */
+function dueInDays(days) {
+  return new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
+}
 
 /** Demo credentials. Intentionally public: this is a mock application. */
 export const DEMO_USERS = Object.freeze([
@@ -22,10 +30,19 @@ export const DEMO_SITES = Object.freeze([
  * Idempotently creates the demo users and sample sites. Safe to run on every
  * boot: existing emails and site names are skipped. Returns what was created.
  */
+export const DEMO_WORK_ORDERS = Object.freeze([
+  { site: 'Newark Distribution Center', title: 'Replace dock door 4 motor', priority: 'urgent', status: 'in_progress', dueInDays: -1, description: 'Door will not close; blocking evening loading.' },
+  { site: 'Route 9 Substation Retrofit', title: 'Confirm permit approval', priority: 'high', status: 'blocked', dueInDays: 3, description: 'Waiting on the town inspector.' },
+  { site: 'Boston HQ', title: 'Quarterly fire extinguisher check', priority: 'normal', status: 'open', dueInDays: 14, description: '' },
+  { site: 'Van 12', title: 'Oil change and tyre rotation', priority: 'low', status: 'open', dueInDays: 21, description: '' },
+  { site: 'Providence Client — Harbor Corp', title: 'Install replacement badge reader', priority: 'normal', status: 'done', dueInDays: -7, description: 'Signed off by J. Rivera.' },
+]);
+
 export async function seedDemo(db, { log = () => {} } = {}) {
   const users = createUserRepository(db);
   const sites = createSiteRepository(db);
-  const created = { users: [], sites: [] };
+  const workOrders = createWorkOrderRepository(db);
+  const created = { users: [], sites: [], workOrders: [] };
   let adminId = null;
 
   for (const user of DEMO_USERS) {
@@ -46,6 +63,30 @@ export async function seedDemo(db, { log = () => {} } = {}) {
     sites.create(site, adminId);
     created.sites.push(site.name);
     log(`created site: ${site.name}`);
+  }
+
+  const siteIdByName = new Map(sites.listAll({}).map((site) => [site.name, site.id]));
+  const operator = users.findByEmail('ops@fieldpoint.local');
+  const existingTitles = new Set(
+    workOrders.list({ limit: 500, offset: 0, sort: 'due' }).rows.map((order) => order.title),
+  );
+  for (const order of DEMO_WORK_ORDERS) {
+    const siteId = siteIdByName.get(order.site);
+    if (!siteId || existingTitles.has(order.title)) continue;
+    workOrders.create(
+      {
+        siteId,
+        title: order.title,
+        description: order.description,
+        status: order.status,
+        priority: order.priority,
+        assignedTo: operator?.id ?? null,
+        dueDate: dueInDays(order.dueInDays),
+      },
+      adminId,
+    );
+    created.workOrders.push(order.title);
+    log(`created work order: ${order.title}`);
   }
   return created;
 }

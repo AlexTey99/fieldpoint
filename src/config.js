@@ -79,5 +79,6 @@ export function loadConfig(env = process.env) {
     sessionSecret: resolveSessionSecret(env, dbPath),
     sessionTtlMs: parseIntOr(env.SESSION_TTL_HOURS, DEFAULT_SESSION_TTL_HOURS) * 60 * 60 * 1000,
     allowedOrigins: parseOrigins(env.ALLOWED_ORIGINS),
+    seedDemo: env.SEED_DEMO === 'true',
   });
 }

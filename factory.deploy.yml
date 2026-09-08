@@ -1,0 +1,40 @@
+# Atlantic Software Factory preview manifest.
+# The repo declares what it is made of; the server owns ports, TLS, volumes,
+# secret values and the read-only root filesystem.
+version: 1
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    port: 4100
+    env:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      DB_PATH: /data/fieldpoint.db
+      # Demo accounts + sample sites are created on first boot (idempotent).
+      SEED_DEMO: "true"
+    # SQLite database + WAL files live here; the rest of the image is read-only.
+    writable_paths:
+      - /data
+
+routes:
+  root: web
+
+health:
+  - service: web
+    path: /api/health
+    expect: [200]
+
+# The Factory's QA agent gets its own administrator account.
+qa_seed:
+  service: web
+  command: >-
+    FIELDPOINT_USER_EMAIL="$FACTORY_QA_EMAIL"
+    FIELDPOINT_USER_PASSWORD="$FACTORY_QA_PASSWORD"
+    FIELDPOINT_USER_NAME="Factory QA"
+    node scripts/create-user.js
+
+# Mock application: the session secret is committed in .env / Dockerfile.
+env_required: []

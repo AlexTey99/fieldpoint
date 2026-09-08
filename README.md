@@ -14,24 +14,31 @@ Built to be boring and dependable: Node.js + Express 5, SQLite through the Node 
 - **Audit log** — every login, user change and site mutation is recorded and visible to admins.
 - **Hardening** — Helmet CSP, same-origin check on all mutations (CSRF), zod validation on every input, JSON body limit, global + login rate limits, JSON 404/500 envelopes that never leak stack traces.
 
+> **Mock application.** Demo credentials and the session secret are committed on purpose
+> (`.env`, `Dockerfile`) so the app boots anywhere with zero setup. Do not reuse them for real data.
+
+## Demo accounts
+
+Created automatically on first boot (`SEED_DEMO=true`, idempotent):
+
+| Email | Password | Role |
+| --- | --- | --- |
+| admin@fieldpoint.local | admin-demo-pass | admin |
+| ops@fieldpoint.local | ops-demo-pass1 | member |
+| qa@fieldpoint.local | qa-demo-pass-2026 | admin |
+
+`npm run seed` prints the same table. Extra admins: `FIELDPOINT_USER_EMAIL=… FIELDPOINT_USER_PASSWORD=… node scripts/create-user.js`.
+
 ## Quick start
 
 Requires Node.js 22.13+ (uses `node:sqlite`).
 
 ```bash
 npm install
-npm run seed      # optional demo data: admin@fieldpoint.local / admin-demo-pass
-npm start         # http://localhost:4100 (also printed with your LAN address)
+npm start         # http://localhost:4100 (LAN address printed too); demo data seeded on boot
 ```
 
-Without seeding, open the app and create the first administrator account from the sign-in screen.
-
-Demo accounts created by `npm run seed`:
-
-| Email | Password | Role |
-| --- | --- | --- |
-| admin@fieldpoint.local | admin-demo-pass | admin |
-| ops@fieldpoint.local | ops-demo-pass1 | member |
+Set `SEED_DEMO=false` to start empty; the sign-in screen then offers to create the first administrator.
 
 ## Configuration
 
@@ -42,12 +49,13 @@ Copy `.env.example` to `.env` (or export variables). All optional in development
 | `PORT` | `4100` | HTTP port |
 | `HOST` | `0.0.0.0` | Bind address; use `127.0.0.1` to keep it local |
 | `DB_PATH` | `./data/fieldpoint.db` | SQLite file, directory auto-created |
-| `SESSION_SECRET` | auto-generated into `data/.session-secret` (dev) | **Required in production**, 32+ chars |
+| `SESSION_SECRET` | demo value in `.env` / `Dockerfile` | Required in production, 32+ chars; override for real use |
+| `SEED_DEMO` | `false` (`true` in `.env` / `Dockerfile`) | Seed demo accounts + sites on boot |
 | `SESSION_TTL_HOURS` | `72` | Session lifetime |
 | `NODE_ENV` | `development` | `production` enables secure cookies + trust-proxy |
 | `ALLOWED_ORIGINS` | same-origin only | Comma-separated extra origins allowed to mutate |
 
-The app does not read `.env` itself; use `node --env-file=.env src/server.js` or your process manager.
+`npm start` loads `.env` when present (`--env-file-if-exists`).
 
 ## API
 
@@ -81,6 +89,12 @@ npm test                # node:test + supertest, in-memory SQLite
 npm run test:coverage   # with V8 coverage report
 npm run lint            # syntax check + forbidden-statement scan
 ```
+
+## Atlantic Software Factory
+
+`factory.deploy.yml` declares the preview: one service built from the `Dockerfile`, port 4100,
+`/data` writable for SQLite, health on `/api/health`, and a `qa_seed` hook that creates the
+Factory's QA administrator via `scripts/create-user.js`. No external services, no required secrets.
 
 ## Docker
 

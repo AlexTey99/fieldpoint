@@ -1,5 +1,6 @@
 import { loadConfig } from './config.js';
 import { createApp } from './app.js';
+import { seedDemo } from './db/seed.js';
 import { networkInterfaces } from 'node:os';
 
 const SESSION_PURGE_INTERVAL_MS = 15 * 60 * 1000;
@@ -11,9 +12,14 @@ function lanAddresses() {
     .map((iface) => iface.address);
 }
 
-function main() {
+async function main() {
   const config = loadConfig();
   const { app, db, sessions } = createApp(config);
+
+  if (config.seedDemo) {
+    const created = await seedDemo(db, { log: (line) => console.log(`[seed] ${line}`) });
+    if (created.users.length === 0 && created.sites.length === 0) console.log('[seed] demo data already present');
+  }
 
   const purgeTimer = setInterval(() => sessions.purgeExpired(), SESSION_PURGE_INTERVAL_MS);
   purgeTimer.unref();
@@ -39,4 +45,7 @@ function main() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
-main();
+main().catch((error) => {
+  console.error('[fieldpoint] failed to start', error);
+  process.exit(1);
+});

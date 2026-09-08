@@ -24,3 +24,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t fieldpoint:ci .
+      # Mimic a Factory preview: read-only root, tmpfs /data, no injected config.
+      - name: Boot container read-only and smoke test
+        run: |
+          set -euo pipefail
+          docker run -d --name fp -p 4100:4100 --read-only --tmpfs /data:uid=1000,gid=1000 fieldpoint:ci
+          for i in $(seq 1 30); do curl -sf localhost:4100/api/health && break; sleep 1; done
+          curl -sf localhost:4100/api/health
+          curl -sf -X POST localhost:4100/api/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"admin@fieldpoint.local","password":"admin-demo-pass"}' | grep -q '"role":"admin"'
+          docker exec -e FIELDPOINT_USER_EMAIL=factoryqa@example.com -e FIELDPOINT_USER_PASSWORD=factory-qa-pass-1 \
+            fp node scripts/create-user.js
+          curl -sf -X POST localhost:4100/api/auth/login -H 'Content-Type: application/json' \
+            -d '{"email":"factoryqa@example.com","password":"factory-qa-pass-1"}' | grep -q '"role":"admin"'
+      - name: Container logs
+        if: always()
+        run: docker logs fp || true

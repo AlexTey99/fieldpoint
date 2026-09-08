@@ -42,6 +42,23 @@ describe('user administration', () => {
     assert.equal(login.status, 401);
   });
 
+  it('directory is readable by members, lists only active users, and hides hashes', async () => {
+    const member = await createMember(ctx.agent, ctx.app);
+    const response = await member.get('/api/users/directory');
+    assert.equal(response.status, 200);
+    assert.equal(response.body.users.length, 2);
+    assert.deepEqual(Object.keys(response.body.users[0]).sort(), ['email', 'id', 'name', 'role']);
+
+    const memberId = response.body.users.find((user) => user.email === MEMBER.email).id;
+    await ctx.agent.patch(`/api/users/${memberId}`).send({ isActive: false });
+    const afterDeactivation = await ctx.agent.get('/api/users/directory');
+    assert.equal(afterDeactivation.body.users.length, 1);
+  });
+
+  it('directory requires authentication', async () => {
+    assert.equal((await request(ctx.app).get('/api/users/directory')).status, 401);
+  });
+
   it('rejects unknown users and empty patches', async () => {
     assert.equal((await ctx.agent.patch('/api/users/999').send({ role: 'admin' })).status, 404);
     assert.equal((await ctx.agent.patch(`/api/users/${admin.id}`).send({})).status, 400);

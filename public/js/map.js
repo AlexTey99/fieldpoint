@@ -50,15 +50,31 @@ export function createMapView(element, { onSelect, onAddAt }) {
     return requestAnimationFrame(() => whenSized(fn, attempt + 1));
   }
 
+  let hereLayer = null;
+
   return {
+    /** Marks the viewer's own position with an accuracy/radius circle. */
+    showHere({ lat, lng }, radiusKm) {
+      if (hereLayer) hereLayer.remove();
+      hereLayer = L.layerGroup([
+        L.circleMarker([lat, lng], { radius: 6, color: '#60a5fa', fillColor: '#60a5fa', fillOpacity: 0.9 }),
+        L.circle([lat, lng], { radius: radiusKm * 1000, color: '#60a5fa', weight: 1, fillOpacity: 0.05 }),
+      ]).addTo(map);
+      map.fitBounds(L.circle([lat, lng], { radius: radiusKm * 1000 }).getBounds().pad(0.1));
+    },
+    clearHere() {
+      if (hereLayer) hereLayer.remove();
+      hereLayer = null;
+    },
     render(sites) {
       layer.clearLayers();
       markers.clear();
       for (const site of sites) {
         const marker = L.marker([site.lat, site.lng], { icon: pinIcon(site.category, site.status), title: site.name });
+        const assignee = site.assignedToName ? ` · ${escapeHtml(site.assignedToName)}` : '';
         marker.bindPopup(
           `<b>${escapeHtml(site.name)}</b><br><span style="opacity:.7">${escapeHtml(site.address || '—')}</span>` +
-            `<br><small>${escapeHtml(CATEGORIES[site.category]?.label ?? site.category)} · ${escapeHtml(site.status)}</small>`,
+            `<br><small>${escapeHtml(CATEGORIES[site.category]?.label ?? site.category)} · ${escapeHtml(site.status)}${assignee}</small>`,
         );
         marker.on('click', () => onSelect(site.id));
         marker.addTo(layer);

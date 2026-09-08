@@ -29,8 +29,9 @@
     <header class="topbar">
       <div class="brand"><span class="brand-dot"></span>FieldPoint</div>
       <nav class="tabs" role="tablist">
-        <button class="tab active" data-tab="sites" role="tab">Sites</button>
-        <button class="tab" data-tab="admin" role="tab" id="admin-tab" hidden>Admin</button>
+        <button class="tab active" data-tab="sites" role="tab" aria-selected="true">Sites</button>
+        <button class="tab" data-tab="work-orders" role="tab" aria-selected="false">Work orders</button>
+        <button class="tab" data-tab="admin" role="tab" aria-selected="false" id="admin-tab" hidden>Admin</button>
       </nav>
       <div class="user-box">
         <span id="user-label" class="mono"></span>
@@ -40,14 +41,17 @@
 
     <aside class="sidebar">
       <div id="panel-sites" class="panel">
+        <div id="site-stats" class="stats-strip" aria-label="Site totals by status"></div>
         <div class="toolbar">
           <input id="search" type="search" placeholder="Search name, address, notes" aria-label="Search sites" />
-          <select id="filter-category" aria-label="Filter by category">
-            <option value="">All categories</option>
-          </select>
-          <select id="filter-status" aria-label="Filter by status">
-            <option value="">All statuses</option>
-          </select>
+          <select id="filter-category" aria-label="Filter by category"></select>
+          <select id="filter-status" aria-label="Filter by status"></select>
+          <select id="site-sort" aria-label="Sort sites"></select>
+          <button id="near-me" class="ghost small" type="button" title="Show sites within 50 km of your location">Near me</button>
+        </div>
+        <div class="row gap wrap check-row">
+          <label class="check"><input type="checkbox" id="filter-mine" /> Assigned to me</label>
+          <label class="check" id="recycle-bin-row" hidden><input type="checkbox" id="show-deleted" /> Recycle bin</label>
         </div>
         <div class="row between">
           <span class="muted" id="site-count">0 sites</span>
@@ -58,6 +62,23 @@
         </div>
         <p class="hint">Tip: right-click the map to add a site at that point.</p>
         <ul id="site-list" class="site-list" aria-label="Site list"></ul>
+      </div>
+
+      <div id="panel-work-orders" class="panel" hidden>
+        <div class="toolbar">
+          <select id="wo-filter-status" aria-label="Filter work orders by status"></select>
+          <select id="wo-filter-priority" aria-label="Filter work orders by priority"></select>
+          <select id="wo-sort" aria-label="Sort work orders"></select>
+        </div>
+        <div class="row gap wrap check-row">
+          <label class="check"><input type="checkbox" id="wo-filter-mine" /> Assigned to me</label>
+          <label class="check"><input type="checkbox" id="wo-filter-open" checked /> Open only</label>
+        </div>
+        <div class="row between">
+          <span class="muted" id="wo-count">0 work orders</span>
+          <button id="wo-add" class="primary small" type="button">+ New work order</button>
+        </div>
+        <ul id="wo-list" class="site-list" aria-label="Work order list"></ul>
       </div>
 
       <div id="panel-admin" class="panel" hidden>
@@ -100,7 +121,9 @@
           <label>Category<select name="category" id="form-category"></select></label>
           <label>Status<select name="status" id="form-status"></select></label>
         </div>
+        <label>Assigned to<select name="assignedTo" id="form-assigned"></select></label>
         <label>Notes<textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+        <p class="muted mono" id="site-meta"></p>
         <p class="error" id="site-error" role="alert"></p>
         <div class="row between">
           <button type="button" id="delete-btn" class="danger small" hidden>Delete</button>
@@ -110,6 +133,41 @@
           </div>
         </div>
       </form>
+    </dialog>
+
+    <!-- Work order editor -->
+    <dialog id="wo-dialog">
+      <form id="wo-form" method="dialog">
+        <h3 id="wo-dialog-title">New work order</h3>
+        <label>Site<select id="wo-site" required></select></label>
+        <label>Title<input name="title" required maxlength="140" /></label>
+        <label>Description<textarea name="description" rows="3" maxlength="4000"></textarea></label>
+        <div class="row gap">
+          <label>Status<select id="wo-status"></select></label>
+          <label>Priority<select id="wo-priority"></select></label>
+        </div>
+        <div class="row gap">
+          <label>Assigned to<select id="wo-assigned"></select></label>
+          <label>Due date<input name="dueDate" type="date" /></label>
+        </div>
+        <p class="muted mono" id="wo-meta"></p>
+        <p class="error" id="wo-error" role="alert"></p>
+        <div class="row between">
+          <button type="button" id="wo-delete" class="danger small" hidden>Delete</button>
+          <div class="row gap">
+            <button type="button" id="wo-cancel" class="ghost">Cancel</button>
+            <button type="submit" class="primary">Save</button>
+          </div>
+        </div>
+      </form>
+      <section id="wo-comment-section" hidden>
+        <h4>Activity</h4>
+        <ul id="wo-comments" class="comments"></ul>
+        <form id="wo-comment-form" class="row gap">
+          <input name="body" placeholder="Add a note" maxlength="2000" aria-label="Add a comment" />
+          <button type="submit" class="ghost small">Post</button>
+        </form>
+      </section>
     </dialog>
   </div>
 

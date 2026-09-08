@@ -12,6 +12,9 @@ import { createUserRepository } from './users/repository.js';
 import { createUserRouter } from './users/routes.js';
 import { createSiteRepository } from './sites/repository.js';
 import { createSiteRouter } from './sites/routes.js';
+import { createWorkOrderRepository } from './work-orders/repository.js';
+import { createWorkOrderRouter } from './work-orders/routes.js';
+import { requestLogger } from './middleware/logging.js';
 import { originCheck } from './middleware/security.js';
 import { errorHandler, notFoundHandler } from './middleware/errors.js';
 
@@ -32,7 +35,8 @@ export function createApp(config) {
   const sessions = createSessionStore(db, { secret: config.sessionSecret, ttlMs: config.sessionTtlMs });
   const users = createUserRepository(db);
   const sites = createSiteRepository(db);
-  const deps = { db, sessions, users, sites, config };
+  const workOrders = createWorkOrderRepository(db);
+  const deps = { db, sessions, users, sites, workOrders, config };
 
   const app = express();
   app.disable('x-powered-by');
@@ -55,11 +59,28 @@ export function createApp(config) {
     }),
   );
   app.use(express.json({ limit: BODY_LIMIT }));
-  app.use(attachUser(sessions));
+  app.use(requestLogger({ enabled: !config.isTest }));
 
+  // Liveness *and* readiness: a process that cannot reach its database is not
+  // healthy, and both Docker and the deploy manifest gate on this route.
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, service: 'fieldpoint', time: new Date().toISOString() });
+    let database = 'ok';
+    try {
+      db.prepare('SELECT 1 AS ok').get();
+    } catch (error) {
+      database = 'error';
+      console.error('[health] database check failed', error);
+    }
+    const healthy = database === 'ok';
+    res.status(healthy ? 200 : 503).json({
+      ok: healthy,
+      service: 'fieldpoint',
+      database,
+      time: new Date().toISOString(),
+    });
   });
+
+  app.use(attachUser(sessions));
 
   app.use(
     '/api',
@@ -74,6 +95,7 @@ export function createApp(config) {
   app.use('/api/auth', createAuthRouter(deps));
   app.use('/api/users', createUserRouter(deps));
   app.use('/api/sites', createSiteRouter(deps));
+  app.use('/api/work-orders', createWorkOrderRouter(deps));
   app.use('/api', notFoundHandler);
 
   app.use('/vendor/leaflet', express.static(join(LEAFLET_DIR, 'dist'), { immutable: true, maxAge: '7d' }));

@@ -77,7 +77,8 @@ export function createApp(config) {
   app.use('/api', notFoundHandler);
 
   app.use('/vendor/leaflet', express.static(join(LEAFLET_DIR, 'dist'), { immutable: true, maxAge: '7d' }));
-  app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
+  // max-age 0 + ETag: browsers revalidate on every load, so UI updates never go stale.
+  app.use(express.static(PUBLIC_DIR, { extensions: ['html'], maxAge: 0, etag: true }));
   app.use(errorHandler);
 
   return { app, db, sessions };

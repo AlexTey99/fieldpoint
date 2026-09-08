@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { bootApp } from './helpers.js';
 import { loadConfig } from '../src/config.js';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 describe('app plumbing', () => {
   let ctx;
@@ -37,8 +40,17 @@ describe('config', () => {
     assert.throws(() => loadConfig({ NODE_ENV: 'production' }), /SESSION_SECRET/);
   });
 
+  it('persists a generated dev secret next to the database', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fieldpoint-'));
+    const first = loadConfig({ DB_PATH: join(dir, 'x.db') });
+    const second = loadConfig({ DB_PATH: join(dir, 'x.db') });
+    assert.equal(first.sessionSecret, second.sessionSecret);
+    assert.ok(existsSync(join(dir, '.session-secret')));
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('applies defaults and parses overrides', () => {
-    const config = loadConfig({ PORT: '5000', SESSION_TTL_HOURS: '1', ALLOWED_ORIGINS: 'https://a.test, https://b.test' });
+    const config = loadConfig({ DB_PATH: ':memory:', PORT: '5000', SESSION_TTL_HOURS: '1', ALLOWED_ORIGINS: 'https://a.test, https://b.test' });
     assert.equal(config.port, 5000);
     assert.equal(config.sessionTtlMs, 3_600_000);
     assert.deepEqual(config.allowedOrigins, ['https://a.test', 'https://b.test']);

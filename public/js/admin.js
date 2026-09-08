@@ -11,7 +11,6 @@ export function createAdminPanel({ currentUser }) {
     for (const user of users) {
       const row = document.createElement('tr');
       const who = document.createElement('td');
-      who.innerHTML = '';
       const name = document.createElement('div');
       name.textContent = user.name;
       const email = document.createElement('div');
@@ -52,7 +51,6 @@ export function createAdminPanel({ currentUser }) {
       const item = document.createElement('li');
       const when = new Date(entry.createdAt).toLocaleString();
       const who = entry.userEmail ?? 'system';
-      item.innerHTML = '';
       const strong = document.createElement('b');
       strong.textContent = entry.action;
       item.append(strong, ` · ${who} · ${entry.entityType}${entry.entityId ? ` #${entry.entityId}` : ''} · ${when}`);

@@ -27,12 +27,18 @@ export function createAuthRouter({ db, users, sessions, config }) {
   router.post('/register', loginLimiter, validate(registerSchema), async (req, res, next) => {
     try {
       const { email, name, password } = req.validated.body;
+      // Cheap pre-checks so anonymous callers cannot burn scrypt time after bootstrap.
+      if (users.count() > 0 && req.user?.role !== 'admin') {
+        throw new HttpError(403, 'Only administrators can create accounts');
+      }
+      const passwordHash = await hashPassword(password);
+      // Hash first, then decide + insert synchronously: node:sqlite is sync, so no
+      // interleaving request can slip a second "first admin" in between.
       const isBootstrap = users.count() === 0;
       if (!isBootstrap && req.user?.role !== 'admin') {
         throw new HttpError(403, 'Only administrators can create accounts');
       }
       if (users.findByEmail(email)) throw new HttpError(409, 'Email already registered');
-      const passwordHash = await hashPassword(password);
       const user = users.create({ email, name, passwordHash, role: isBootstrap ? 'admin' : 'member' });
       recordAudit(db, {
         userId: req.user?.id ?? user.id,

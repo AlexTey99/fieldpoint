@@ -90,6 +90,15 @@ describe('sites', () => {
     assert.ok(response.text.includes(`"a ""quoted"" note"`));
   });
 
+  it('exports every matching row regardless of page size', async () => {
+    for (let index = 0; index < 12; index += 1) {
+      await ctx.agent.post('/api/sites').send({ ...SITE, name: `Bulk ${String(index).padStart(2, '0')}` });
+    }
+    const response = await ctx.agent.get('/api/sites/export.csv?limit=1&q=Bulk');
+    const dataLines = response.text.trim().split('\r\n').slice(1);
+    assert.equal(dataLines.length, 12);
+  });
+
   it('returns stats grouped by category and status', async () => {
     await ctx.agent.post('/api/sites').send(SITE);
     await ctx.agent.post('/api/sites').send({ ...SITE, name: 'B' });

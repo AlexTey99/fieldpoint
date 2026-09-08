@@ -3,6 +3,7 @@ import { CATEGORIES, DEFAULT_VIEW } from './constants.js';
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const FOCUS_ZOOM = 15;
+const FIT_RETRY_FRAMES = 60;
 
 function escapeHtml(text) {
   return String(text ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -29,6 +30,26 @@ export function createMapView(element, { onSelect, onAddAt }) {
 
   map.on('contextmenu', (event) => onAddAt(event.latlng.lat, event.latlng.lng));
 
+  // Leaflet only tracks window resizes. The container is laid out by CSS grid and
+  // can change size (or be 0×0 on first paint) without a window resize, so
+  // re-measure whenever the element itself changes.
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => map.invalidateSize({ animate: false })).observe(element);
+  }
+
+  function hasSize() {
+    const size = map.getSize();
+    return size.x > 0 && size.y > 0;
+  }
+
+  /** Runs `fn` once the container has a real size; gives up after FIT_RETRY_FRAMES frames. */
+  function whenSized(fn, attempt = 0) {
+    map.invalidateSize({ animate: false });
+    if (hasSize()) return fn();
+    if (attempt >= FIT_RETRY_FRAMES) return undefined;
+    return requestAnimationFrame(() => whenSized(fn, attempt + 1));
+  }
+
   return {
     render(sites) {
       layer.clearLayers();
@@ -47,7 +68,7 @@ export function createMapView(element, { onSelect, onAddAt }) {
     fitAll(sites) {
       if (sites.length === 0) return;
       const bounds = L.latLngBounds(sites.map((site) => [site.lat, site.lng]));
-      map.fitBounds(bounds.pad(0.2), { maxZoom: 13 });
+      whenSized(() => map.fitBounds(bounds.pad(0.2), { maxZoom: 13, animate: false }));
     },
     focus(id) {
       const marker = markers.get(id);

@@ -22,6 +22,17 @@ describe('auth', () => {
     assert.equal(me.body.needsBootstrap, false);
   });
 
+  it('concurrent bootstrap registrations yield exactly one admin', async () => {
+    const attempts = ['a', 'b', 'c', 'd'].map((suffix) =>
+      request(ctx.app).post('/api/auth/register').send({ ...ADMIN, email: `${suffix}@example.com` }),
+    );
+    const responses = await Promise.all(attempts);
+    const created = responses.filter((response) => response.status === 201);
+    assert.equal(created.length, 1);
+    assert.equal(created[0].body.user.role, 'admin');
+    assert.ok(responses.filter((response) => response.status === 403).length === 3);
+  });
+
   it('rejects anonymous registration after bootstrap', async () => {
     await registerAdmin(ctx.agent);
     const response = await request(ctx.app).post('/api/auth/register').send(MEMBER);

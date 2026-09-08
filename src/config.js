@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,7 +14,31 @@ function parseIntOr(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function resolveSessionSecret(env) {
+const DEV_SECRET_FILE = '.session-secret';
+
+/**
+ * Development only: keep a generated secret next to the database so sessions
+ * survive restarts. Falls back to an in-memory secret if the file is unwritable.
+ */
+function loadOrCreateDevSecret(dbPath) {
+  if (dbPath === ':memory:') return randomBytes(32).toString('hex');
+  const file = resolve(dirname(dbPath), DEV_SECRET_FILE);
+  try {
+    if (existsSync(file)) {
+      const stored = readFileSync(file, 'utf8').trim();
+      if (stored.length >= MIN_SECRET_LENGTH) return stored;
+    }
+    const generated = randomBytes(32).toString('hex');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, generated, { mode: 0o600 });
+    return generated;
+  } catch (error) {
+    console.warn(`[config] could not persist dev session secret at ${file}: ${error.message}`);
+    return randomBytes(32).toString('hex');
+  }
+}
+
+function resolveSessionSecret(env, dbPath) {
   const provided = env.SESSION_SECRET?.trim();
   if (provided && provided.length >= MIN_SECRET_LENGTH) return provided;
   if (env.NODE_ENV === 'production') {
@@ -22,9 +47,9 @@ function resolveSessionSecret(env) {
     );
   }
   if (provided) {
-    console.warn(`[config] SESSION_SECRET shorter than ${MIN_SECRET_LENGTH} chars; generating a random one`);
+    console.warn(`[config] SESSION_SECRET shorter than ${MIN_SECRET_LENGTH} chars; ignoring it`);
   }
-  return randomBytes(32).toString('hex');
+  return loadOrCreateDevSecret(dbPath);
 }
 
 /** Relative DB paths are anchored to the project root, not the process cwd. */
@@ -43,14 +68,15 @@ function parseOrigins(value) {
 
 export function loadConfig(env = process.env) {
   const nodeEnv = env.NODE_ENV ?? 'development';
+  const dbPath = resolveDbPath(env.DB_PATH?.trim() || './data/fieldpoint.db');
   return Object.freeze({
     nodeEnv,
     isProduction: nodeEnv === 'production',
     isTest: nodeEnv === 'test',
     port: parseIntOr(env.PORT, DEFAULT_PORT),
     host: env.HOST?.trim() || '0.0.0.0',
-    dbPath: resolveDbPath(env.DB_PATH?.trim() || './data/fieldpoint.db'),
-    sessionSecret: resolveSessionSecret(env),
+    dbPath,
+    sessionSecret: resolveSessionSecret(env, dbPath),
     sessionTtlMs: parseIntOr(env.SESSION_TTL_HOURS, DEFAULT_SESSION_TTL_HOURS) * 60 * 60 * 1000,
     allowedOrigins: parseOrigins(env.ALLOWED_ORIGINS),
   });

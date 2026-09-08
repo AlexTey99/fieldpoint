@@ -8,3 +8,4 @@ data/
 .env.local
 coverage/
 .DS_Store
+.session-secret

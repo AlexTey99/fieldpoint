@@ -42,7 +42,7 @@ Copy `.env.example` to `.env` (or export variables). All optional in development
 | `PORT` | `4100` | HTTP port |
 | `HOST` | `0.0.0.0` | Bind address; use `127.0.0.1` to keep it local |
 | `DB_PATH` | `./data/fieldpoint.db` | SQLite file, directory auto-created |
-| `SESSION_SECRET` | random per boot (dev) | **Required in production**, 32+ chars |
+| `SESSION_SECRET` | auto-generated into `data/.session-secret` (dev) | **Required in production**, 32+ chars |
 | `SESSION_TTL_HOURS` | `72` | Session lifetime |
 | `NODE_ENV` | `development` | `production` enables secure cookies + trust-proxy |
 | `ALLOWED_ORIGINS` | same-origin only | Comma-separated extra origins allowed to mutate |

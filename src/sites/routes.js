@@ -20,7 +20,7 @@ export function createSiteRouter({ db, sites }) {
   });
 
   router.get('/export.csv', validate(listSitesSchema, 'query'), (req, res) => {
-    const { rows } = sites.list({ ...req.validated.query, limit: 1000, offset: 0 });
+    const rows = sites.listAll(req.validated.query);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="sites.csv"');
     res.send(toCsv(rows));

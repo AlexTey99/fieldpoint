@@ -32,7 +32,7 @@ button, a.ghost {
 button:hover, a.ghost:hover { border-color: var(--muted); }
 .primary { background: var(--green); color: #04110a; border-color: var(--green); font-weight: 600; }
 .primary:hover { filter: brightness(1.1); border-color: var(--green); }
-.ghost { background: transparent; }
+.ghost { background: transparent; color: var(--text); }
 .danger { background: transparent; color: var(--red); border-color: var(--red); }
 .small { padding: 4px 9px; font-size: 12px; }
 .muted { color: var(--muted); }
@@ -66,7 +66,8 @@ button:hover, a.ghost:hover { border-color: var(--muted); }
 .site-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .site-item { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; cursor: pointer; display: grid; gap: 2px; }
 .site-item:hover, .site-item.selected { border-color: var(--green); background: var(--surface-2); }
-.site-item .title { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.site-item .title { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; }
+.site-item .edit-btn { padding: 1px 7px; font-size: 11px; font-weight: 500; }
 .site-item .sub { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .badge.active { color: var(--green); border-color: var(--green-dim); }

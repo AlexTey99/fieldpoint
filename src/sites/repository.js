@@ -45,6 +45,11 @@ export function createSiteRepository(db) {
       const { total } = db.prepare(`SELECT COUNT(*) AS total FROM sites s ${where}`).get(...params);
       return { rows, total };
     },
+    /** Every matching row, no pagination — for exports. */
+    listAll(filters) {
+      const { where, params } = buildFilter(filters);
+      return db.prepare(`SELECT ${COLUMNS} ${FROM} ${where} ORDER BY s.name COLLATE NOCASE`).all(...params);
+    },
     create(data, userId) {
       const result = insert.run(
         data.name, data.address, data.lat, data.lng, data.category, data.status, data.notes, userId, userId,

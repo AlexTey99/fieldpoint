@@ -2,6 +2,9 @@ import { api, geocode } from './api.js';
 import { CATEGORIES, STATUSES } from './constants.js';
 import { $, fillSelect, formValues, toast } from './ui.js';
 
+const PAGE_SIZE = 1000;
+const MAX_SITES = 10000;
+
 /** Sidebar list + editor dialog for sites. State lives here; map is notified via callbacks. */
 export function createSitesPanel({ mapView, currentUser }) {
   const list = $('#site-list');
@@ -49,7 +52,19 @@ export function createSitesPanel({ mapView, currentUser }) {
       const badge = document.createElement('span');
       badge.className = `badge ${site.status}`;
       badge.textContent = STATUSES[site.status] ?? site.status;
-      title.append(name, badge);
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'ghost small edit-btn';
+      edit.textContent = 'Edit';
+      edit.setAttribute('aria-label', `Edit ${site.name}`);
+      edit.addEventListener('click', (event) => {
+        event.stopPropagation();
+        openEditor(site);
+      });
+      const right = document.createElement('span');
+      right.className = 'row gap';
+      right.append(badge, edit);
+      title.append(name, right);
       const sub = document.createElement('div');
       sub.className = 'sub';
       sub.textContent = `${CATEGORIES[site.category]?.label ?? site.category} · ${site.address || `${site.lat.toFixed(4)}, ${site.lng.toFixed(4)}`}`;
@@ -66,10 +81,28 @@ export function createSitesPanel({ mapView, currentUser }) {
     mapView.focus(id);
   }
 
+  /** Pages through the API until every matching site is loaded (bounded by MAX_SITES). */
+  async function fetchAllSites(filters) {
+    const collected = [];
+    let offset = 0;
+    let total = Infinity;
+    while (offset < total && collected.length < MAX_SITES) {
+      const result = await api.listSites({ ...filters, limit: PAGE_SIZE, offset });
+      collected.push(...result.sites);
+      total = result.total;
+      offset += PAGE_SIZE;
+      if (result.sites.length === 0) break;
+    }
+    return { sites: collected, total };
+  }
+
   async function refresh({ fit = false } = {}) {
     try {
-      const result = await api.listSites(currentFilters());
+      const result = await fetchAllSites(currentFilters());
       sites = result.sites;
+      if (result.total > sites.length) {
+        toast(`Showing ${sites.length} of ${result.total} sites — narrow the filters to see the rest`, true);
+      }
       renderList();
       mapView.render(sites);
       if (fit) mapView.fitAll(sites);

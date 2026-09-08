@@ -1,0 +1,47 @@
+import { afterEach, beforeEach, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { bootApp } from './helpers.js';
+import { loadConfig } from '../src/config.js';
+
+describe('app plumbing', () => {
+  let ctx;
+  beforeEach(() => (ctx = bootApp()));
+  afterEach(() => ctx.close());
+
+  it('serves health without auth', async () => {
+    const response = await ctx.agent.get('/api/health');
+    assert.equal(response.status, 200);
+    assert.equal(response.body.service, 'fieldpoint');
+  });
+
+  it('serves the SPA and vendored leaflet', async () => {
+    assert.equal((await ctx.agent.get('/')).status, 200);
+    assert.equal((await ctx.agent.get('/vendor/leaflet/leaflet.js')).status, 200);
+  });
+
+  it('returns JSON 404 for unknown API routes', async () => {
+    const response = await ctx.agent.get('/api/nope');
+    assert.equal(response.status, 404);
+    assert.equal(response.body.ok, false);
+  });
+
+  it('sets security headers', async () => {
+    const response = await ctx.agent.get('/api/health');
+    assert.ok(response.headers['content-security-policy']);
+    assert.equal(response.headers['x-powered-by'], undefined);
+  });
+});
+
+describe('config', () => {
+  it('requires SESSION_SECRET in production', () => {
+    assert.throws(() => loadConfig({ NODE_ENV: 'production' }), /SESSION_SECRET/);
+  });
+
+  it('applies defaults and parses overrides', () => {
+    const config = loadConfig({ PORT: '5000', SESSION_TTL_HOURS: '1', ALLOWED_ORIGINS: 'https://a.test, https://b.test' });
+    assert.equal(config.port, 5000);
+    assert.equal(config.sessionTtlMs, 3_600_000);
+    assert.deepEqual(config.allowedOrigins, ['https://a.test', 'https://b.test']);
+    assert.equal(config.sessionSecret.length >= 32, true);
+  });
+});

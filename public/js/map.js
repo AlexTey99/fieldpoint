@@ -1,0 +1,60 @@
+import { CATEGORIES, DEFAULT_VIEW } from './constants.js';
+
+const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const FOCUS_ZOOM = 15;
+
+function escapeHtml(text) {
+  return String(text ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
+function pinIcon(category, status) {
+  const color = CATEGORIES[category]?.color ?? CATEGORIES.other.color;
+  const opacity = status === 'inactive' ? 0.45 : 1;
+  return L.divIcon({
+    className: '',
+    html: `<div class="marker-pin" style="background:${color};opacity:${opacity}"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -8],
+  });
+}
+
+/** Wraps Leaflet so the rest of the UI never touches L directly. */
+export function createMapView(element, { onSelect, onAddAt }) {
+  const map = L.map(element, { zoomControl: true }).setView(DEFAULT_VIEW.center, DEFAULT_VIEW.zoom);
+  L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+  const layer = L.layerGroup().addTo(map);
+  const markers = new Map();
+
+  map.on('contextmenu', (event) => onAddAt(event.latlng.lat, event.latlng.lng));
+
+  return {
+    render(sites) {
+      layer.clearLayers();
+      markers.clear();
+      for (const site of sites) {
+        const marker = L.marker([site.lat, site.lng], { icon: pinIcon(site.category, site.status), title: site.name });
+        marker.bindPopup(
+          `<b>${escapeHtml(site.name)}</b><br><span style="opacity:.7">${escapeHtml(site.address || '—')}</span>` +
+            `<br><small>${escapeHtml(CATEGORIES[site.category]?.label ?? site.category)} · ${escapeHtml(site.status)}</small>`,
+        );
+        marker.on('click', () => onSelect(site.id));
+        marker.addTo(layer);
+        markers.set(site.id, marker);
+      }
+    },
+    fitAll(sites) {
+      if (sites.length === 0) return;
+      const bounds = L.latLngBounds(sites.map((site) => [site.lat, site.lng]));
+      map.fitBounds(bounds.pad(0.2), { maxZoom: 13 });
+    },
+    focus(id) {
+      const marker = markers.get(id);
+      if (!marker) return;
+      map.setView(marker.getLatLng(), Math.max(map.getZoom(), FOCUS_ZOOM));
+      marker.openPopup();
+    },
+    invalidate: () => map.invalidateSize(),
+  };
+}
